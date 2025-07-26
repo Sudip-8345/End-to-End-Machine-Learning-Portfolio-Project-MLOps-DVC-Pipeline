@@ -21,7 +21,7 @@ os.environ["MLFLOW_TRACKING_PASSWORD"] = "12972f00f3e9e497b33238b5832f455b866ef5
 # Set the experiment name in MLflow
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-mlflow.set_experiment("final_model3")
+mlflow.set_experiment("final_model4")
 # Initialize DagsHub for experiment tracking
 import dagshub
 dagshub.init(repo_owner='Sudip-8345', repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline', mlflow=True)
