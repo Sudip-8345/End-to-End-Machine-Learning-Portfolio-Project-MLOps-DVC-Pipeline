@@ -3,14 +3,13 @@ from mlflow.tracking import MlflowClient
 import mlflow
 
 import dagshub
-dagshub.init(repo_owner='bhattpriyang', repo_name='mlops_project', mlflow=True)
-
+dagshub.init(repo_owner='Sudip-8345', repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline', mlflow=True)
 # Set the experiment name in MLflow
 
-mlflow.set_experiment("Final_Model")
+mlflow.set_experiment("final_model")
 
 # Set the tracking URI for MLflow to log the experiment in DagsHub
-mlflow.set_tracking_uri("https://dagshub.com/bhattpriyang/mlops_project.mlflow") 
+mlflow.set_tracking_uri("https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow")
 # Load the run ID and model name from the saved JSON file
 reports_path = "reports/run_info.json"
 with open(reports_path, 'r') as file:

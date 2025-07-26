@@ -15,14 +15,14 @@ from mlflow.models import infer_signature
 
 # Initialize DagsHub for experiment tracking
 # Initialize DagsHub for experiment tracking
-dagshub.init(repo_owner='bhattpriyang', repo_name='mlops_project', mlflow=True)
-
+import dagshub
+dagshub.init(repo_owner='Sudip-8345', repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline', mlflow=True)
 # Set the experiment name in MLflow
 
-mlflow.set_experiment("DVC PIPELINE ")
+mlflow.set_experiment("final_model")
 
 # Set the tracking URI for MLflow to log the experiment in DagsHub
-mlflow.set_tracking_uri("https://dagshub.com/bhattpriyang/mlops_project.mlflow") 
+mlflow.set_tracking_uri("https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow") 
 
 
 #mlflow.set_experiment("water-potability-prediction")
