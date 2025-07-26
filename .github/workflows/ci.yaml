@@ -24,7 +24,9 @@ jobs:
         pip install dvc
     - name: 🔁 Run DVC with DagsHub env
       env:
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+        DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        MLFLOW_TRACKING_URI: "https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow"
+        
       run: |
         dvc repro
 
