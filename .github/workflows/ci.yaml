@@ -1,4 +1,4 @@
-name: CI - Water Potability
+name: CI - Water Potability Pipeline
 
 on:
   push:
@@ -7,33 +7,60 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MLFLOW_TRACKING_URI: https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Set up Python 3.13.3
-      uses: actions/setup-python@v5
       with:
-        python-version: '3.13'
+        fetch-depth: 0  # Required for DVC
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'  # Matches your training environment
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install dvc
-        pip install dagshub mlflow scikit-learn matplotlib seaborn
+        pip install dvc dagshub==0.3.14 scikit-learn==1.3.2 matplotlib==3.8.0 seaborn==0.13.0
 
-    - name: Run Pipeline
-      env:
-        # Critical environment variables
-        MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository_owner }}/${{ github.event.repository.name }}.mlflow
-        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}  # Use same token
-        DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    - name: Configure DVC remote
       run: |
-        # Force-enable DagsHub auth in Python scripts
-        export DAGSHUB_USER=$MLFLOW_TRACKING_USERNAME
-        export DAGSHUB_TOKEN=$MLFLOW_TRACKING_PASSWORD
-        
+        dvc remote add origin https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.dvc || true
+        dvc remote modify origin --local auth basic
+        dvc remote modify origin --local user Sudip-8345
+        dvc remote modify origin --local password $DAGSHUB_TOKEN
+
+    - name: Run DVC pipeline
+      run: |
+        dvc pull
         dvc repro
+
+    - name: Verify critical outputs
+      run: |
+        if [ ! -f "models/model.pkl" ]; then
+          echo "❌ Error: Model file not found at models/model.pkl"
+          ls -l models/
+          exit 1
+        fi
+        
+        if [ ! -f "reports/run_info.json" ]; then
+          echo "❌ Error: Evaluation report not generated"
+          ls -l reports/
+          exit 1
+        fi
+        echo "✅ All outputs verified"
+
+    - name: Upload debug artifacts
+      if: always()  # Upload even if job fails
+      uses: actions/upload-artifact@v3
+      with:
+        name: pipeline-outputs
+        path: |
+          models/
+          reports/
+          dvc.lock
