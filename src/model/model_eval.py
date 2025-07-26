@@ -12,6 +12,39 @@ import dagshub
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import os
+import mlflow
+import pickle
+import pandas as pd
+from sklearn.metrics import accuracy_score
+from dagshub import dagshub_logger
+
+# Initialize with DagsHub's recommended approach
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+
+def log_to_dagshub():
+    with dagshub_logger() as logger:
+        # Load data
+        test_df = pd.read_csv("data/processed/test_processed.csv")
+        X_test = test_df.drop(columns=['Potability'])
+        y_test = test_df['Potability']
+        
+        # Load model
+        with open("model.pkl", "rb") as f:
+            model = pickle.load(f)
+        
+        # Calculate metrics
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        
+        # Log to DagsHub
+        logger.log_metrics({"accuracy": accuracy})
+        logger.log_hyperparams({"model_type": "RandomForest"})
+        
+        print(f"Successfully logged accuracy: {accuracy}")
+
+if __name__ == "__main__":
+    log_to_dagshub()
 # Enhanced error handling
 def safe_mlflow_setup():
     try:
@@ -95,4 +128,5 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
+    log_to_dagshub()
     main()
