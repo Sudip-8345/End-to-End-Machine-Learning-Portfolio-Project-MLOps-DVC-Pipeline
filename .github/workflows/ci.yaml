@@ -24,14 +24,16 @@ jobs:
         pip install dvc
         pip install dagshub mlflow scikit-learn matplotlib seaborn
 
-    - name: Set up environment variables for DVC and MLflow
-      run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_USERNAME=${{ secrets.MLFLOW_USERNAME }}" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}" >> $GITHUB_ENV
-
-    - name: 🔁 Run DVC with Dagshub env
+    - name: Run Pipeline
       env:
+        # Critical environment variables
+        MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository_owner }}/${{ github.event.repository.name }}.mlflow
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}  # Use same token
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
+        # Force-enable DagsHub auth in Python scripts
+        export DAGSHUB_USER=$MLFLOW_TRACKING_USERNAME
+        export DAGSHUB_TOKEN=$MLFLOW_TRACKING_PASSWORD
+        
         dvc repro
