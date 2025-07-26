@@ -63,8 +63,8 @@ stages:
       size: 73493348
     - path: src/model/model_eval.py
       hash: md5
-      md5: da0fb669245b4850a30d46baed908d15
-      size: 5069
+      md5: 745216d43270e6613f2e4d5866060fcd
+      size: 5325
     outs:
     - path: reports/metrics.json
       hash: md5
@@ -72,16 +72,16 @@ stages:
       size: 152
     - path: reports/run_info.json
       hash: md5
-      md5: 760ba7e74608a8d842451da752162c48
+      md5: a1255f8d6a396c4ac1a7ad98362e116e
       size: 87
   model_registration:
     cmd: python src/model/model_reg.py
     deps:
     - path: reports/run_info.json
       hash: md5
-      md5: 760ba7e74608a8d842451da752162c48
+      md5: a1255f8d6a396c4ac1a7ad98362e116e
       size: 87
     - path: src/model/model_reg.py
       hash: md5
-      md5: 746a4b78a155bc44e57aeeabe8483e42
-      size: 1421
+      md5: 46cdf0e88516f85f6db38f71b59a7c9b
+      size: 786

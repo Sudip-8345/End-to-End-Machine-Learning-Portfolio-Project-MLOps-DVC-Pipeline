@@ -14,6 +14,10 @@ import mlflow
 from mlflow.models import infer_signature
 import os
 
+import os
+os.environ["MLFLOW_TRACKING_USERNAME"] = "Sudip-8345"
+os.environ["MLFLOW_TRACKING_PASSWORD"] = "3a7b1bd52c535c004bd9b275516eae784255615d"
+
 # Set the experiment name in MLflow
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
@@ -132,7 +136,11 @@ def main():
 
             signature = infer_signature(X_test,model.predict(X_test))
 
-            mlflow.sklearn.log_model(model,"Best Model",signature=signature)
+            import joblib
+
+            joblib.dump(model, "model.pkl")
+            mlflow.log_artifact("model.pkl", artifact_path="model_artifact")
+
 
             #Save run ID and model info to JSON File
             run_info = {'run_id': run.info.run_id, 'model_name': "Best Model"}
