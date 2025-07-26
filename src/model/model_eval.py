@@ -30,7 +30,7 @@ def log_to_dagshub():
         y_test = test_df['Potability']
         
         # Load model
-        with open("model.pkl", "rb") as f:
+        with open("models\model.pkl", "rb") as f:
             model = pickle.load(f)
         
         # Calculate metrics
