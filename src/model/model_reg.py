@@ -1,29 +1,54 @@
 import json
-import mlflow
-from mlflow.tracking import MlflowClient
 import os
-os.environ["MLFLOW_TRACKING_USERNAME"] = "Sudip-8345"
-os.environ["MLFLOW_TRACKING_PASSWORD"] = "12972f00f3e9e497b33238b5832f455b866ef5d0"
-
-# Set the experiment name in MLflow
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-
-mlflow.set_experiment("final_model4")
+import mlflow
 import dagshub
-dagshub.init(repo_owner='Sudip-8345', repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline', mlflow=True)
+from mlflow.tracking import MlflowClient
+from dagshub import dagshub_logger
 
-mlflow.set_tracking_uri("https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow")
-mlflow.set_experiment("final_model")
+def load_run_info(run_info_path: str) -> dict:
+    """Load run information from JSON file"""
+    try:
+        with open(run_info_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        raise Exception(f"Error loading run info: {e}")
 
-# Load run info
-with open("reports/run_info.json", 'r') as f:
-    run_info = json.load(f)
+def log_model_info(model_uri: str, model_name: str):
+    """Log model information to console"""
+    print(f"Model URI: {model_uri}")
+    print(f"Model Name: {model_name}")
+    print("Model metrics and artifacts can be viewed at:")
+    print(f"{os.getenv('MLFLOW_TRACKING_URI')}")
 
-run_id = run_info['run_id']
-model_name = run_info['model_name']
+def main():
+    try:
+        # Initialize MLflow tracking from environment variables
+        mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+        
+        # Initialize DagsHub with MLflow integration
+        dagshub.init(
+            repo_owner='Sudip-8345',
+            repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline',
+            mlflow=True
+        )
 
-# You can now access or use the model artifact like this
-model_uri = f"runs:/{run_id}/model_artifact/model.pkl"
+        # Load run information
+        run_info = load_run_info("reports/run_info.json")
+        run_id = run_info['run_id']
+        model_name = run_info['model_name']
 
-print(f"Model is available at: {model_uri}")
-print("Skipping model registry as DagsHub does not support it.")
+        # Get model URI
+        model_uri = f"runs:/{run_id}/model_artifact/model.pkl"
+
+        # Log model information
+        log_model_info(model_uri, model_name)
+
+        print("Model registration complete. Note: DagsHub uses automatic model tracking")
+        print("The model is already available in your MLflow experiments")
+
+    except Exception as e:
+        print(f"An error occurred during model registration: {e}")
+        raise
+
+if __name__ == "__main__":
+    main()

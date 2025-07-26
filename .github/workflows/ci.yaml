@@ -1,37 +1,76 @@
-name: CI - Water Potability
+name: CI - Water Potability Pipeline
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-and-evaluate:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
-
-    - name: Set up Python 3.13.3
-      uses: actions/setup-python@v5
       with:
-        python-version: '3.13'
+        fetch-depth: 0  # Required for DVC
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install dvc
-        pip install dagshub mlflow scikit-learn matplotlib seaborn
+        pip install dvc dvc-gdrive dagshub
 
-    - name: Set up environment variables for DVC and MLflow
+    - name: Configure DVC
       run: |
-        echo "MLFLOW_TRACKING_URI=https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_USERNAME=${{ secrets.MLFLOW_USERNAME }}" >> $GITHUB_ENV
-        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}" >> $GITHUB_ENV
+        dvc remote modify origin --local auth basic
+        dvc remote modify origin --local user ${{ secrets.DAGSHUB_USERNAME }}
+        dvc remote modify origin --local password ${{ secrets.DAGSHUB_TOKEN }}
 
-    - name: Run DVC with Dagshub env
+    - name: Set up MLflow tracking
+      env:
+        MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository_owner }}/${{ github.event.repository.name }}.mlflow
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+      run: |
+        echo "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI" >> $GITHUB_ENV
+        echo "DAGSHUB_USER=${{ secrets.DAGSHUB_USERNAME }}" >> $GITHUB_ENV
+        echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+
+    - name: Run DVC pipeline
       env:
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
+        dvc pull
         dvc repro
+
+    - name: Evaluate model
+      env:
+        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+      run: |
+        python src/model/model_eval.py
+
+    - name: Register model
+      env:
+        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+      run: |
+        python src/model/register.py
+
+    - name: Upload metrics
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-metrics
+        path: |
+          reports/metrics.json
+          reports/run_info.json
+          confusion_matrix_*.png
