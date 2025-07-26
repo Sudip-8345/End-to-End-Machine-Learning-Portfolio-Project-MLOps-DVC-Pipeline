@@ -22,6 +22,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install dvc
+    - name: Set MLflow Tracking URI and Auth
+      run: |
+        export MLFLOW_TRACKING_URI=https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow
+        export MLFLOW_TRACKING_USERNAME=Sudip-8345
+        export MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}
 
     - name: Run DVC pipeline
       run: |
