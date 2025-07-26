@@ -22,12 +22,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install dvc
-    - name: 🛠 Run DVC with DagsHub credentials
+    - name: 🔁 Run DVC with DagsHub env
       env:
-        MLFLOW_TRACKING_URI: https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow
-        MLFLOW_TRACKING_USERNAME: Sudip-8345
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
         dvc repro
+
 
 

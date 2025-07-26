@@ -12,14 +12,16 @@ import mlflow.sklearn
 import dagshub
 import mlflow
 from mlflow.models import infer_signature
+import os
 
-# Initialize DagsHub for experiment tracking
+# Set the experiment name in MLflow
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+
+mlflow.set_experiment("final_model2")
 # Initialize DagsHub for experiment tracking
 import dagshub
 dagshub.init(repo_owner='Sudip-8345', repo_name='End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline', mlflow=True)
-# Set the experiment name in MLflow
 
-mlflow.set_experiment("final_model")
 
 # Set the tracking URI for MLflow to log the experiment in DagsHub
 mlflow.set_tracking_uri("https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow") 
