@@ -1,44 +1,37 @@
 name: CI - Water Potability
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
 
 jobs:
-  pipeline:
+  build:
     runs-on: ubuntu-latest
-    env:
-      MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository_owner }}/${{ github.event.repository.name }}.mlflow
-      REPO_NAME: ${{ github.event.repository.name }}
 
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.13.3
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.13
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install dvc dagshub
+        pip install dvc
+        pip install dagshub mlflow scikit-learn matplotlib seaborn
 
-    - name: Configure DVC
+    - name: Set up environment variables for DVC and MLflow
+      run: |
+        echo "MLFLOW_TRACKING_URI=https://dagshub.com/Sudip-8345/End-to-End-Machine-Learning-Portfolio-Project-MLOps-DVC-Pipeline.mlflow" >> $GITHUB_ENV
+        echo "MLFLOW_TRACKING_USERNAME=${{ secrets.MLFLOW_USERNAME }}" >> $GITHUB_ENV
+        echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}" >> $GITHUB_ENV
+
+    - name: 🔁 Run DVC with Dagshub env
       env:
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        dvc remote modify origin --local auth basic
-        dvc remote modify origin --local user ${{ secrets.MLFLOW_TRACKING_USERNAME }}
-        dvc remote modify origin --local password $DAGSHUB_TOKEN
-
-    - name: Run Pipeline
-      env:
-        DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
-      run: |
-        dvc pull
         dvc repro
-        python src/model/model_eval.py
