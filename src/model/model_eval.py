@@ -11,43 +11,18 @@ from dagshub.auth import add_app_token
 import dagshub
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
-import os
-import mlflow
-import pickle
-import pandas as pd
-from sklearn.metrics import accuracy_score
-from dagshub import dagshub_logger
-
-# Initialize with DagsHub's recommended approach
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-
-def log_to_dagshub():
-    with dagshub_logger() as logger:
-        # Load data
-        test_df = pd.read_csv("data/processed/test_processed.csv")
-        X_test = test_df.drop(columns=['Potability'])
-        y_test = test_df['Potability']
-        
-        # Load model
-        with open("models\model.pkl", "rb") as f:
-            model = pickle.load(f)
-        
-        # Calculate metrics
-        y_pred = model.predict(X_test)
-        accuracy = accuracy_score(y_test, y_pred)
-        
-        # Log to DagsHub
-        logger.log_metrics({"accuracy": accuracy})
-        logger.log_hyperparams({"model_type": "RandomForest"})
-        
-        print(f"Successfully logged accuracy: {accuracy}")
-
-if __name__ == "__main__":
-    log_to_dagshub()
-# Enhanced error handling
-def safe_mlflow_setup():
+def initialize_environment():
+    """Initialize MLflow and DagsHub with proper authentication"""
     try:
+        # Verify required environment variables
+        required_vars = ['MLFLOW_TRACKING_URI', 'DAGSHUB_TOKEN']
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
+        if missing_vars:
+            raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
+        
+        # Initialize connections
         add_app_token(os.getenv("DAGSHUB_TOKEN"))
         dagshub.init(
             repo_owner='Sudip-8345',
@@ -55,56 +30,78 @@ def safe_mlflow_setup():
             mlflow=True
         )
         mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+        mlflow.set_experiment("water-potability-final")
+        
     except Exception as e:
-        print(f"Setup failed: {str(e)}", file=sys.stderr)
+        print(f"❌ Initialization failed: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
+def load_and_validate_data() -> tuple[pd.DataFrame, pd.Series]:
+    """Load and validate test data"""
+    data_path = Path("data/processed/test_processed.csv")
+    if not data_path.exists():
+        raise FileNotFoundError(f"Test data not found at {data_path.absolute()}")
+    
+    test_df = pd.read_csv(data_path)
+    return test_df.drop(columns=['Potability']), test_df['Potability']
+
+def load_and_validate_model():
+    """Load and validate trained model"""
+    model_path = Path("models/model.pkl")
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found at {model_path.absolute()}")
+    
+    with open(model_path, "rb") as f:
+        return pickle.load(f)
+
+def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
+    """Calculate evaluation metrics and generate artifacts"""
+    y_pred = model.predict(X_test)
+    
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': precision_score(y_test, y_pred),
+        'recall': recall_score(y_test, y_pred),
+        'f1': f1_score(y_test, y_pred)
+    }
+    
+    # Generate confusion matrix
+    cm_path = Path("reports/confusion_matrix.png")
+    cm_path.parent.mkdir(exist_ok=True)
+    
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d')
+    plt.title("Confusion Matrix")
+    plt.savefig(cm_path)
+    plt.close()
+    
+    return metrics, cm_path
+
 def main():
-    safe_mlflow_setup()
+    initialize_environment()
     
     try:
-        # 1. Load Data
-        test_df = pd.read_csv("data/processed/test_processed.csv")
-        X_test = test_df.drop(columns=['Potability'])
-        y_test = test_df['Potability']
+        # Load data and model
+        X_test, y_test = load_and_validate_data()
+        model = load_and_validate_model()
         
-        # 2. Load Model
-        with open("models/model.pkl", "rb") as f:
-            model = pickle.load(f)
-        
-        # 3. Start MLflow Run
-        with mlflow.start_run() as run:
-            # 4. Evaluate
-            y_pred = model.predict(X_test)
+        # Start MLflow run
+        with mlflow.start_run():
+            # Evaluate model
+            metrics, cm_path = evaluate_model(model, X_test, y_test)
             
-            metrics = {
-                'accuracy': accuracy_score(y_test, y_pred),
-                'precision': precision_score(y_test, y_pred),
-                'recall': recall_score(y_test, y_pred),
-                'f1': f1_score(y_test, y_pred)
-            }
-            
-            # 5. Log Parameters
+            # Log parameters
             params = yaml.safe_load(open("params.yaml"))
             mlflow.log_params({
                 "test_size": params["data_collection"]["test_size"],
                 "n_estimators": params["model_building"]["n_estimators"]
             })
             
-            # 6. Log Metrics
+            # Log metrics
             mlflow.log_metrics(metrics)
             
-            # 7. Save Confusion Matrix
-            cm = confusion_matrix(y_test, y_pred)
-            plt.figure(figsize=(8, 6))
-            sns.heatmap(cm, annot=True, fmt='d')
-            plt.title("Confusion Matrix")
-            cm_path = "confusion_matrix.png"
-            plt.savefig(cm_path)
-            mlflow.log_artifact(cm_path)
-            
-            # 8. Log Model
-            signature = infer_signature(X_test, y_pred)
+            # Log model with signature
+            signature = infer_signature(X_test, model.predict(X_test))
             mlflow.sklearn.log_model(
                 sk_model=model,
                 artifact_path="model",
@@ -112,21 +109,24 @@ def main():
                 registered_model_name="water_potability_model"
             )
             
-            # 9. Save Run Info
+            # Log artifacts
+            mlflow.log_artifact(cm_path)
+            
+            # Save run info
             run_info = {
-                "run_id": run.info.run_id,
                 "metrics": metrics,
-                "model_uri": f"runs:/{run.info.run_id}/model"
+                "model_uri": mlflow.get_artifact_uri("model")
             }
             with open("reports/run_info.json", "w") as f:
                 json.dump(run_info, f, indent=2)
-                
-        print("✅ Evaluation completed successfully")
-        
+            
+            print("✅ Evaluation completed successfully!")
+            print(f"Model URI: {run_info['model_uri']}")
+            print(f"Accuracy: {metrics['accuracy']:.4f}")
+            
     except Exception as e:
-        print(f" Evaluation failed: {str(e)}", file=sys.stderr)
+        print(f"❌ Evaluation failed: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
-    log_to_dagshub()
     main()
